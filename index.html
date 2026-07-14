@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ServiceNow ITSM Simulation — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --surface2:  #1a2236;
+    --border:    #1e2d45;
+    --accent:    #00c2ff;
+    --accent2:   #6366f1;
+    --success:   #10b981;
+    --warning:   #f59e0b;
+    --danger:    #ef4444;
+    --orange:    #f97316;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  .brand-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .topbar-nav { display: flex; gap: 4px; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 6px 14px; border-radius: 6px;
+    font-family: var(--sans); font-size: 13px; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .nav-btn:hover, .nav-btn.active { background: var(--surface2); color: var(--text); }
+  .nav-btn.active { color: var(--accent); }
+  .topbar-status {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* LAYOUT */
+  .main { display: flex; height: calc(100vh - 56px); }
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+  .sidebar-section { margin-bottom: 20px; }
+  .sidebar-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 0 16px 6px;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; cursor: pointer;
+    font-size: 13px; color: var(--muted);
+    transition: all 0.15s; border-left: 2px solid transparent;
+  }
+  .sidebar-link:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-link.active { background: var(--surface2); color: var(--accent); border-left-color: var(--accent); }
+  .sidebar-link .icon { font-size: 15px; width: 18px; text-align: center; }
+  .badge {
+    margin-left: auto;
+    background: var(--danger); color: #fff;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    padding: 1px 6px; border-radius: 10px;
+  }
+  .badge.warn { background: var(--warning); color: #000; }
+  .badge.info { background: var(--accent2); }
+
+  /* CONTENT */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* PAGE SECTIONS */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* METRIC CARDS */
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+  }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .metric-label { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .metric-value { font-size: 32px; font-weight: 300; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .metric-delta { font-size: 11px; margin-top: 4px; }
+  .metric-delta.up { color: var(--success); }
+  .metric-delta.down { color: var(--danger); }
+
+  /* PANELS */
+  .panels-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel.full { grid-column: 1/-1; }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size: 13px; font-weight: 500; }
+  .panel-action {
+    font-size: 11px; color: var(--accent); cursor: pointer;
+    font-family: var(--mono); background: none; border: none;
+  }
+  .panel-body { padding: 16px 18px; }
+
+  /* INCIDENT TABLE */
+  .incident-table { width: 100%; border-collapse: collapse; }
+  .incident-table th {
+    text-align: left; font-family: var(--mono); font-size: 10px;
+    color: var(--muted); font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .incident-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .incident-table tr:last-child td { border-bottom: none; }
+  .incident-table tr:hover td { background: var(--surface2); }
+
+  /* PRIORITY BADGES */
+  .pri {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+  }
+  .pri-1 { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .pri-2 { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
+  .pri-3 { background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+  .pri-4 { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+
+  /* STATE BADGES */
+  .state {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-family: var(--mono); font-weight: 500;
+  }
+  .state-new          { background: rgba(99,102,241,0.15); color: #818cf8; }
+  .state-in_progress  { background: rgba(0,194,255,0.15); color: var(--accent); }
+  .state-resolved     { background: rgba(16,185,129,0.15); color: var(--success); }
+  .state-closed       { background: rgba(100,116,139,0.2); color: var(--muted); }
+  .state-cab_review   { background: rgba(234,179,8,0.15); color: #eab308; }
+  .state-approved     { background: rgba(16,185,129,0.15); color: var(--success); }
+  .state-scheduled    { background: rgba(0,194,255,0.15); color: var(--accent); }
+
+  /* SLA BAR */
+  .sla-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .sla-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .sla-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+  .sla-pct { font-family: var(--mono); font-size: 10px; color: var(--muted); width: 35px; text-align: right; }
+
+  /* SLA COMPLIANCE CHART */
+  .sla-tiers { display: flex; flex-direction: column; gap: 12px; }
+  .sla-tier { }
+  .sla-tier-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+  .sla-tier-name { color: var(--text); }
+  .sla-tier-pct { font-family: var(--mono); font-size: 12px; }
+
+  /* FORM STYLES */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid.full { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.07em; }
+  .form-input, .form-select, .form-textarea {
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 8px 12px;
+    font-family: var(--sans); font-size: 13px;
+    transition: border-color 0.15s; outline: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-select option { background: var(--surface); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #33cfff; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-left: 3px solid var(--success);
+    color: var(--text); padding: 12px 18px;
+    border-radius: 8px; font-size: 13px;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+    max-width: 320px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.error { border-left-color: var(--danger); }
+
+  /* CMDB VIZ */
+  .cmdb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .ci-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .ci-card:hover { border-color: var(--accent); }
+  .ci-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+  .ci-class { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .ci-criticality { display: inline-block; margin-top: 6px; padding: 1px 7px; border-radius: 3px; font-size: 10px; }
+  .ci-crit-critical { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .ci-crit-high     { background: rgba(249,115,22,0.15); color: #f97316; }
+  .ci-crit-medium   { background: rgba(234,179,8,0.15);  color: #eab308; }
+  .ci-crit-low      { background: rgba(34,197,94,0.15);  color: #22c55e; }
+
+  /* SECTION TITLE */
+  .section-title { font-size: 18px; font-weight: 300; margin-bottom: 20px; color: var(--text); }
+  .section-title span { color: var(--accent); font-family: var(--mono); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; width: 600px; max-height: 80vh;
+    overflow-y: auto; padding: 24px;
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 500; }
+  .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  .detail-row { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; margin-bottom: 8px; }
+  .detail-key { font-family: var(--mono); font-size: 11px; color: var(--muted); padding-top: 2px; }
+  .detail-val { font-size: 12px; color: var(--text); word-break: break-word; }
+  .work-notes { background: var(--bg); border-radius: 6px; padding: 10px 12px; font-size: 12px; font-family: var(--mono); color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">⚡</div>
+    ServiceNow ITSM Simulation
+  </div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button class="nav-btn" onclick="showPage('incidents', this)">Incidents</button>
+    <button class="nav-btn" onclick="showPage('changes', this)">Changes</button>
+    <button class="nav-btn" onclick="showPage('portal', this)">Service Portal</button>
+    <button class="nav-btn" onclick="showPage('cmdb', this)">CMDB</button>
+    <button class="nav-btn" onclick="showPage('sla', this)">SLA Reports</button>
+  </div>
+  <div class="topbar-status">
+    <div class="status-dot"></div>
+    LIVE SIMULATION
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Operations</div>
+      <div class="sidebar-link active" onclick="showPage('dashboard', null, this)"><span class="icon">🏠</span> Overview</div>
+      <div class="sidebar-link" onclick="showPage('incidents', null, this)"><span class="icon">🔴</span> Incidents <span class="badge" id="sb-inc-count">—</span></div>
+      <div class="sidebar-link" onclick="showPage('changes', null, this)"><span class="icon">🔄</span> Changes <span class="badge warn" id="sb-chg-count">—</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Self-Service</div>
+      <div class="sidebar-link" onclick="showPage('portal', null, this)"><span class="icon">🌐</span> Service Portal</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Configuration</div>
+      <div class="sidebar-link" onclick="showPage('cmdb', null, this)"><span class="icon">🗄️</span> CMDB</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Reporting</div>
+      <div class="sidebar-link" onclick="showPage('sla', null, this)"><span class="icon">📊</span> SLA Reports</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="section-title">Operations <span>Overview</span></div>
+
+      <div class="metrics-row" id="metric-cards">
+        <!-- injected by JS -->
+      </div>
+
+      <div class="panels-row">
+        <!-- Active Incidents -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">🔴 Active Incidents</span>
+            <button class="panel-action" onclick="showPage('incidents', null)">View all →</button>
+          </div>
+          <div class="panel-body">
+            <table class="incident-table" id="active-incidents-table">
+              <thead><tr><th>Number</th><th>Description</th><th>Pri</th><th>SLA</th></tr></thead>
+              <tbody id="active-incidents-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SLA Compliance -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">📊 SLA Compliance</span>
+            <button class="panel-action" onclick="showPage('sla', null)">Full report →</button>
+          </div>
+          <div class="panel-body">
+            <div class="sla-tiers" id="sla-compliance-widget"></div>
+          </div>
+        </div>
+
+        <!-- Recent Changes -->
+        <div class="panel full">
+          <div class="panel-header">
+            <span class="panel-title">🔄 Change Requests</span>
+            <button class="panel-action" onclick="showPage('changes', null)">View all →</button>
+          </div>
+          <div class="panel-body">
+            <table class="incident-table" id="changes-summary-table">
+              <thead><tr><th>Number</th><th>Description</th><th>Type</th><th>Risk</th><th>State</th><th>Planned Start</th></tr></thead>
+              <tbody id="changes-summary-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENTS PAGE -->
+    <div class="page" id="page-incidents">
+      <div class="section-title">Incident <span>Management</span></div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">All Incidents</span>
+          <button class="btn btn-primary" onclick="showPage('portal', null)">+ New Incident</button>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <table class="incident-table" id="all-incidents-table">
+            <thead><tr><th>Number</th><th>Description</th><th>Category</th><th>Priority</th><th>State</th><th>Group</th><th>SLA Response</th><th>Action</th></tr></thead>
+            <tbody id="all-incidents-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHANGES PAGE -->
+    <div class="page" id="page-changes">
+      <div class="section-title">Change <span>Management</span></div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Change Requests (CAB Workflow)</span>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <table class="incident-table" id="all-changes-table">
+            <thead><tr><th>Number</th><th>Description</th><th>Type</th><th>Risk Score</th><th>State</th><th>Planned</th><th>Action</th></tr></thead>
+            <tbody id="all-changes-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICE PORTAL PAGE -->
+    <div class="page" id="page-portal">
+      <div class="section-title">Service <span>Portal</span></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Submit Incident Request</span>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid" style="margin-bottom:14px">
+              <div class="form-group">
+                <label class="form-label">Caller Email *</label>
+                <input class="form-input" id="f-caller" placeholder="your@email.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Short Description *</label>
+                <input class="form-input" id="f-desc" placeholder="Brief issue summary" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Impact *</label>
+                <select class="form-select" id="f-impact">
+                  <option value="">Select…</option>
+                  <option value="high">High — Business critical</option>
+                  <option value="medium">Medium — Department affected</option>
+                  <option value="low">Low — Single user</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Urgency *</label>
+                <select class="form-select" id="f-urgency">
+                  <option value="">Select…</option>
+                  <option value="high">High — Immediate</option>
+                  <option value="medium">Medium — Same day</option>
+                  <option value="low">Low — Flexible</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:16px">
+              <label class="form-label">Full Description</label>
+              <textarea class="form-textarea" id="f-fullDesc" placeholder="Describe the issue in detail…"></textarea>
+            </div>
+            <div style="display:flex; gap:10px">
+              <button class="btn btn-primary" onclick="submitIncident()">Submit Incident</button>
+              <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">GlideRecord Preview</span>
+          </div>
+          <div class="panel-body">
+            <div style="font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.7;" id="glide-preview">
+              <span style="color:var(--accent2)">// Business Rule execution log</span><br/>
+              <span style="color:var(--muted)">// Submit a ticket to see the automation trace</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CMDB PAGE -->
+    <div class="page" id="page-cmdb">
+      <div class="section-title">Configuration Management <span>Database</span></div>
+      <div class="panels-row">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Configuration Items</span></div>
+          <div class="panel-body">
+            <div class="cmdb-grid" id="cmdb-grid"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Impact Analysis</span></div>
+          <div class="panel-body">
+            <div id="cmdb-impact" style="font-size:13px; color:var(--muted)">Click a CI to see downstream impact and change risk analysis.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLA REPORTS PAGE -->
+    <div class="page" id="page-sla">
+      <div class="section-title">SLA <span>Compliance Reports</span></div>
+      <div class="metrics-row" id="sla-metric-cards"></div>
+      <div class="panels-row">
+        <div class="panel full">
+          <div class="panel-header"><span class="panel-title">Per-Priority SLA Compliance</span></div>
+          <div class="panel-body">
+            <div id="sla-full-report"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- INCIDENT DETAIL MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Incident Detail</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SCRIPTS -->
+<script src="src/scripts/glide-record.js"></script>
+<script src="src/scripts/sla-engine.js"></script>
+<script src="src/scripts/business-rules.js"></script>
+<script src="src/scripts/cmdb-engine.js"></script>
+
+<script>
+// ─── DATA BOOTSTRAP ───────────────────────────────────────────────────────────
+const INCIDENTS_DATA = [
+  { sys_id:"INC0000001", number:"INC0000001", short_description:"VPN connectivity issue - users unable to connect remotely", caller_id:"john.doe@company.com", category:"network", impact:"high", urgency:"high", priority:1, state:"in_progress", assignment_group:"Network Operations", sys_created_on: new Date(Date.now()-7200000).toISOString(), responded_at: new Date(Date.now()-5400000).toISOString(), resolved_at:null },
+  { sys_id:"INC0000002", number:"INC0000002", short_description:"Outlook email not syncing for Finance department", caller_id:"jane.manager@company.com", category:"email", impact:"medium", urgency:"high", priority:2, state:"new", assignment_group:"Messaging Team", sys_created_on: new Date(Date.now()-3600000).toISOString(), responded_at:null, resolved_at:null },
+  { sys_id:"INC0000003", number:"INC0000003", short_description:"Password reset request - user locked out", caller_id:"bob.user@company.com", category:"access", impact:"low", urgency:"medium", priority:4, state:"resolved", assignment_group:"Identity Management", sys_created_on: new Date(Date.now()-14400000).toISOString(), responded_at: new Date(Date.now()-13200000).toISOString(), resolved_at: new Date(Date.now()-12600000).toISOString() },
+  { sys_id:"INC0000004", number:"INC0000004", short_description:"ERP application crash on launch - production environment", caller_id:"ops.lead@company.com", category:"software", impact:"high", urgency:"high", priority:1, state:"in_progress", assignment_group:"Application Support", sys_created_on: new Date(Date.now()-1800000).toISOString(), responded_at: new Date(Date.now()-900000).toISOString(), resolved_at:null },
+  { sys_id:"INC0000005", number:"INC0000005", short_description:"Suspected phishing email - user clicked suspicious link", caller_id:"security.aware@company.com", category:"security", impact:"high", urgency:"high", priority:1, state:"new", assignment_group:"Security Operations", sys_created_on: new Date(Date.now()-900000).toISOString(), responded_at:null, resolved_at:null },
+  { sys_id:"INC0000006", number:"INC0000006", short_description:"Printer offline - HR floor", caller_id:"hr@company.com", category:"hardware", impact:"low", urgency:"low", priority:4, state:"new", assignment_group:"Desktop Support", sys_created_on: new Date(Date.now()-10800000).toISOString(), responded_at:null, resolved_at:null },
+  { sys_id:"INC0000007", number:"INC0000007", short_description:"Database query performance degradation on reporting server", caller_id:"bi.analyst@company.com", category:"database", impact:"medium", urgency:"medium", priority:3, state:"in_progress", assignment_group:"DBA Team", sys_created_on: new Date(Date.now()-18000000).toISOString(), responded_at: new Date(Date.now()-16200000).toISOString(), resolved_at:null },
+  { sys_id:"INC0000008", number:"INC0000008", short_description:"Wi-Fi drops intermittently in conference rooms", caller_id:"facilities@company.com", category:"network", impact:"medium", urgency:"low", priority:3, state:"resolved", assignment_group:"Network Operations", sys_created_on: new Date(Date.now()-86400000).toISOString(), responded_at: new Date(Date.now()-82800000).toISOString(), resolved_at: new Date(Date.now()-72000000).toISOString() }
+];
+
+const CHANGES_DATA = [
+  { sys_id:"CHG0000001", number:"CHG0000001", short_description:"Firewall rule update - Allow new SaaS application traffic", type:"normal", risk:"medium", risk_score:45, state:"cab_review", cmdb_ci:"CI0010", planned_start:"2025-01-20T20:00:00Z", implementation_plan:"1. Backup ruleset\n2. Stage apply\n3. Test\n4. Prod apply\n5. Validate", backout_plan:"Restore from backup.", approval_status:"pending" },
+  { sys_id:"CHG0000002", number:"CHG0000002", short_description:"Emergency patch - Critical CVE-2025-0001 on web servers", type:"emergency", risk:"high", risk_score:78, state:"approved", cmdb_ci:"CI0030", planned_start:"2025-01-15T22:00:00Z", implementation_plan:"1. Snapshot VMs\n2. Patch DEV\n3. Test 30m\n4. Rolling prod\n5. Smoke test", backout_plan:"Revert snapshots.", approval_status:"approved" },
+  { sys_id:"CHG0000003", number:"CHG0000003", short_description:"Database schema migration - Add audit columns to CRM tables", type:"normal", risk:"medium", risk_score:55, state:"scheduled", cmdb_ci:"CI0050", planned_start:"2025-01-25T01:00:00Z", implementation_plan:"1. DB backup\n2. Migration scripts\n3. UAT\n4. Prod\n5. Index rebuild", backout_plan:"Restore from backup.", approval_status:"approved" },
+  { sys_id:"CHG0000004", number:"CHG0000004", short_description:"AD Group Policy update - Password complexity enforcement", type:"standard", risk:"low", risk_score:20, state:"closed", cmdb_ci:"CI0070", planned_start:"2025-01-12T15:00:00Z", implementation_plan:"Update GPO in AD. Force policy sync.", backout_plan:"Revert GPO.", approval_status:"approved" }
+];
+
+const CMDB_DATA = {
+  cis: [
+    { sys_id:"CI0010", name:"Core Network Firewall", class:"Network Device", criticality:"critical", environment:"production", owner:"Network Operations" },
+    { sys_id:"CI0020", name:"Exchange Mail Server", class:"Server", criticality:"high", environment:"production", owner:"Messaging Team" },
+    { sys_id:"CI0030", name:"SAP ERP Application Server", class:"Application Server", criticality:"critical", environment:"production", owner:"Application Support" },
+    { sys_id:"CI0040", name:"HR Floor Network Printer", class:"Printer", criticality:"low", environment:"production", owner:"Desktop Support" },
+    { sys_id:"CI0050", name:"BI Reporting Database", class:"Database", criticality:"high", environment:"production", owner:"DBA Team" },
+    { sys_id:"CI0060", name:"Public Web Server Cluster", class:"Server Cluster", criticality:"critical", environment:"production", owner:"Web Operations" },
+    { sys_id:"CI0070", name:"Active Directory DC", class:"Directory Service", criticality:"critical", environment:"production", owner:"Identity Management" },
+    { sys_id:"CI0080", name:"VPN Gateway Cluster", class:"Network Device", criticality:"high", environment:"production", owner:"Network Operations" }
+  ],
+  relationships: [
+    { parent:"CI0010", child:"CI0020", type:"Connects to" },
+    { parent:"CI0010", child:"CI0030", type:"Connects to" },
+    { parent:"CI0010", child:"CI0060", type:"Connects to" },
+    { parent:"CI0010", child:"CI0080", type:"Connects to" },
+    { parent:"CI0070", child:"CI0020", type:"Authenticates" },
+    { parent:"CI0070", child:"CI0030", type:"Authenticates" },
+    { parent:"CI0030", child:"CI0050", type:"Depends on" },
+    { parent:"CI0080", child:"CI0070", type:"Depends on" }
+  ]
+};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+const slaEngine = new SLAEngine();
+const cmdbEngine = new CMDBEngine(CMDB_DATA);
+
+// Load into GlideRecord store
+GlideRecord.loadTable('incident', INCIDENTS_DATA);
+GlideRecord.loadTable('change_request', CHANGES_DATA);
+
+// Pre-warm SLA clocks
+INCIDENTS_DATA.forEach(inc => slaEngine.startSLAClock(inc));
+
+// Sidebar counts
+document.getElementById('sb-inc-count').textContent = INCIDENTS_DATA.filter(i => i.state !== 'resolved' && i.state !== 'closed').length;
+document.getElementById('sb-chg-count').textContent = CHANGES_DATA.filter(c => c.state === 'cab_review' || c.state === 'approved').length;
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function showPage(id, navBtn, sidebarLink) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (navBtn) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); navBtn.classList.add('active'); }
+  if (sidebarLink) { document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active')); sidebarLink.classList.add('active'); }
+  renderPage(id);
+}
+
+function renderPage(id) {
+  if (id === 'dashboard') renderDashboard();
+  else if (id === 'incidents') renderIncidents();
+  else if (id === 'changes') renderChanges();
+  else if (id === 'cmdb') renderCMDB();
+  else if (id === 'sla') renderSLA();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const active = INCIDENTS_DATA.filter(i => i.state !== 'resolved' && i.state !== 'closed');
+  const p1 = INCIDENTS_DATA.filter(i => i.priority === 1 && i.state !== 'resolved');
+  const resolved = INCIDENTS_DATA.filter(i => i.state === 'resolved').length;
+  const compliance = slaEngine.getComplianceReport(INCIDENTS_DATA);
+
+  document.getElementById('metric-cards').innerHTML = `
+    <div class="metric-card" style="--accent-color:#ef4444">
+      <div class="metric-label">Active Incidents</div>
+      <div class="metric-value">${active.length}</div>
+      <div class="metric-sub">${p1.length} P1 Critical open</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#22c55e">
+      <div class="metric-label">Resolved Today</div>
+      <div class="metric-value">${resolved}</div>
+      <div class="metric-delta up">↓ 25% backlog reduction</div>
+    </div>
+    <div class="metric-card" style="--accent-color:var(--accent2)">
+      <div class="metric-label">Changes Pending</div>
+      <div class="metric-value">${CHANGES_DATA.filter(c=>c.state==='cab_review').length}</div>
+      <div class="metric-sub">Awaiting CAB review</div>
+    </div>
+    <div class="metric-card" style="--accent-color:var(--accent)">
+      <div class="metric-label">SLA Compliance</div>
+      <div class="metric-value">${compliance.overall.complianceRate}%</div>
+      <div class="metric-delta up">↑ On track</div>
+    </div>
+  `;
+
+  // Active incidents table
+  const activeInc = INCIDENTS_DATA.filter(i => i.state !== 'resolved' && i.state !== 'closed').slice(0, 5);
+  document.getElementById('active-incidents-body').innerHTML = activeInc.map(inc => {
+    const s = slaEngine.getSLAStatus(inc);
+    const fillColor = s.responsePercent >= 100 ? '#ef4444' : s.responsePercent >= 80 ? '#f97316' : '#10b981';
+    return `<tr onclick="showIncidentDetail('${inc.sys_id}')" style="cursor:pointer">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent)">${inc.number}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inc.short_description}</td>
+      <td><span class="pri pri-${inc.priority}">P${inc.priority}</span></td>
+      <td>
+        <div class="sla-bar-wrap">
+          <div class="sla-bar"><div class="sla-fill" style="width:${s.responsePercent}%;background:${fillColor}"></div></div>
+          <span class="sla-pct">${Math.round(s.responsePercent)}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // SLA compliance widget
+  const report = slaEngine.getComplianceReport(INCIDENTS_DATA);
+  document.getElementById('sla-compliance-widget').innerHTML = Object.entries(report.byPriority).map(([p, tier]) => {
+    if (tier.total === 0) return '';
+    const c = tier.compliance >= 90 ? '#10b981' : tier.compliance >= 70 ? '#eab308' : '#ef4444';
+    return `<div class="sla-tier">
+      <div class="sla-tier-header">
+        <span class="sla-tier-name">${tier.label}</span>
+        <span class="sla-tier-pct" style="color:${c}">${tier.compliance}%</span>
+      </div>
+      <div class="sla-bar"><div class="sla-fill" style="width:${tier.compliance}%;background:${c}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${tier.met} met / ${tier.total} total</div>
+    </div>`;
+  }).join('');
+
+  // Changes summary
+  document.getElementById('changes-summary-body').innerHTML = CHANGES_DATA.map(chg => {
+    const rColor = chg.risk === 'high' ? 'var(--danger)' : chg.risk === 'medium' ? 'var(--warning)' : 'var(--success)';
+    return `<tr onclick="showChangeDetail('${chg.sys_id}')" style="cursor:pointer">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${chg.number}</td>
+      <td>${chg.short_description}</td>
+      <td><span class="state state-${chg.type}" style="background:rgba(99,102,241,0.1);color:#818cf8">${chg.type}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;color:${rColor}">${chg.risk_score}</span></td>
+      <td><span class="state state-${chg.state}">${chg.state.replace('_',' ')}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${new Date(chg.planned_start).toLocaleDateString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── INCIDENTS ────────────────────────────────────────────────────────────────
+function renderIncidents() {
+  document.getElementById('all-incidents-body').innerHTML = INCIDENTS_DATA.map(inc => {
+    const s = slaEngine.getSLAStatus(inc);
+    const fillColor = s.responsePercent >= 100 ? '#ef4444' : s.responsePercent >= 80 ? '#f97316' : '#10b981';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent)">${inc.number}</td>
+      <td style="max-width:220px">${inc.short_description}</td>
+      <td style="font-size:11px;color:var(--muted)">${inc.category}</td>
+      <td><span class="pri pri-${inc.priority}">P${inc.priority}</span></td>
+      <td><span class="state state-${inc.state}">${inc.state.replace('_',' ')}</span></td>
+      <td style="font-size:11px">${inc.assignment_group}</td>
+      <td>
+        <div class="sla-bar-wrap">
+          <div class="sla-bar"><div class="sla-fill" style="width:${s.responsePercent}%;background:${fillColor}"></div></div>
+          <span class="sla-pct">${Math.round(s.responsePercent)}%</span>
+        </div>
+      </td>
+      <td><button class="panel-action" onclick="showIncidentDetail('${inc.sys_id}')">Detail →</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── CHANGES ──────────────────────────────────────────────────────────────────
+function renderChanges() {
+  document.getElementById('all-changes-body').innerHTML = CHANGES_DATA.map(chg => {
+    const rColor = chg.risk === 'high' ? 'var(--danger)' : chg.risk === 'medium' ? 'var(--warning)' : 'var(--success)';
+    const riskBar = `<div class="sla-bar-wrap"><div class="sla-bar"><div class="sla-fill" style="width:${chg.risk_score}%;background:${rColor}"></div></div><span class="sla-pct" style="color:${rColor}">${chg.risk_score}</span></div>`;
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${chg.number}</td>
+      <td>${chg.short_description}</td>
+      <td><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-family:var(--mono)">${chg.type}</span></td>
+      <td>${riskBar}</td>
+      <td><span class="state state-${chg.state}">${chg.state.replace('_',' ')}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${new Date(chg.planned_start).toLocaleString()}</td>
+      <td><button class="panel-action" onclick="showChangeDetail('${chg.sys_id}')">Detail →</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── CMDB ─────────────────────────────────────────────────────────────────────
+function renderCMDB() {
+  document.getElementById('cmdb-grid').innerHTML = CMDB_DATA.cis.map(ci => `
+    <div class="ci-card" onclick="showCIImpact('${ci.sys_id}')">
+      <div class="ci-name">${ci.name}</div>
+      <div class="ci-class">${ci.class}</div>
+      <span class="ci-criticality ci-crit-${ci.criticality}">${ci.criticality}</span>
+    </div>
+  `).join('');
+}
+
+function showCIImpact(ciId) {
+  const risk = cmdbEngine.calculateChangeRisk(ciId);
+  const downstream = cmdbEngine.getDownstreamImpact(ciId);
+  const upstream = cmdbEngine.getUpstreamDependencies(ciId);
+  const rColor = risk.level === 'high' ? 'var(--danger)' : risk.level === 'medium' ? 'var(--warning)' : 'var(--success)';
+
+  document.getElementById('cmdb-impact').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:15px;font-weight:500;margin-bottom:8px">${risk.ciName}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-family:var(--mono);font-size:24px;color:${rColor}">${risk.score}</span>
+        <span style="font-size:11px;color:var(--muted)">Change Risk Score</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(100,100,100,0.15);color:${rColor}">${risk.level.toUpperCase()} RISK</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:var(--bg);padding:10px;border-radius:6px;margin-bottom:12px">${risk.recommendation}</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:6px">DOWNSTREAM IMPACT (${downstream.length} CIs)</div>
+      ${downstream.length ? downstream.map(ci => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">• ${ci.name} <span style="color:var(--muted)">(${ci.criticality})</span></div>`).join('') : '<div style="font-size:12px;color:var(--muted)">No downstream CIs</div>'}
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:6px">UPSTREAM DEPENDENCIES (${upstream.length})</div>
+      ${upstream.length ? upstream.map(ci => `<div style="font-size:12px;padding:4px 0">← ${ci.name}</div>`).join('') : '<div style="font-size:12px;color:var(--muted)">No upstream dependencies</div>'}
+    </div>
+  `;
+}
+
+// ─── SLA REPORTS ──────────────────────────────────────────────────────────────
+function renderSLA() {
+  const report = slaEngine.getComplianceReport(INCIDENTS_DATA);
+
+  document.getElementById('sla-metric-cards').innerHTML = `
+    <div class="metric-card" style="--accent-color:var(--accent)">
+      <div class="metric-label">Overall Compliance</div>
+      <div class="metric-value">${report.overall.complianceRate}%</div>
+      <div class="metric-sub">${report.overall.met} of ${report.total} resolved within SLA</div>
+    </div>
+    <div class="metric-card" style="--accent-color:var(--success)">
+      <div class="metric-label">SLA Met</div>
+      <div class="metric-value">${report.overall.met}</div>
+      <div class="metric-sub">Resolved within target</div>
+    </div>
+    <div class="metric-card" style="--accent-color:var(--danger)">
+      <div class="metric-label">SLA Breached</div>
+      <div class="metric-value">${report.overall.breached}</div>
+      <div class="metric-sub">Exceeded resolution time</div>
+    </div>
+    <div class="metric-card" style="--accent-color:var(--warning)">
+      <div class="metric-label">At Risk</div>
+      <div class="metric-value">${report.overall.atRisk}</div>
+      <div class="metric-sub">≥80% of window elapsed</div>
+    </div>
+  `;
+
+  document.getElementById('sla-full-report').innerHTML = `
+    <table class="incident-table">
+      <thead><tr><th>Priority</th><th>Total</th><th>Met</th><th>Breached</th><th>Compliance</th><th>SLA Bar</th></tr></thead>
+      <tbody>
+        ${Object.entries(report.byPriority).map(([p, tier]) => {
+          const c = tier.compliance >= 90 ? '#10b981' : tier.compliance >= 70 ? '#eab308' : '#ef4444';
+          return `<tr>
+            <td><span class="pri pri-${p}">P${p} — ${tier.label}</span></td>
+            <td style="font-family:var(--mono)">${tier.total}</td>
+            <td style="font-family:var(--mono);color:var(--success)">${tier.met}</td>
+            <td style="font-family:var(--mono);color:var(--danger)">${tier.breached}</td>
+            <td style="font-family:var(--mono);color:${c}">${tier.compliance}%</td>
+            <td style="min-width:120px"><div class="sla-bar"><div class="sla-fill" style="width:${tier.compliance}%;background:${c}"></div></div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px">INCIDENT SLA STATUS DETAIL</div>
+      <table class="incident-table">
+        <thead><tr><th>Incident</th><th>Priority</th><th>State</th><th>Response SLA</th><th>Resolution SLA</th><th>Remaining</th></tr></thead>
+        <tbody>
+          ${INCIDENTS_DATA.map(inc => {
+            const s = slaEngine.getSLAStatus(inc);
+            const rc = s.responsePercent >= 100 ? '#ef4444' : s.responsePercent >= 80 ? '#f97316' : '#10b981';
+            const xc = s.resolutionPercent >= 100 ? '#ef4444' : s.resolutionPercent >= 80 ? '#f97316' : '#10b981';
+            return `<tr>
+              <td style="font-family:var(--mono);font-size:11px;color:var(--accent)">${inc.number}</td>
+              <td><span class="pri pri-${inc.priority}">P${inc.priority}</span></td>
+              <td><span class="state state-${inc.state}">${inc.state.replace('_',' ')}</span></td>
+              <td><div class="sla-bar-wrap"><div class="sla-bar"><div class="sla-fill" style="width:${s.responsePercent}%;background:${rc}"></div></div><span class="sla-pct">${Math.round(s.responsePercent)}%</span></div></td>
+              <td><div class="sla-bar-wrap"><div class="sla-bar"><div class="sla-fill" style="width:${s.resolutionPercent}%;background:${xc}"></div></div><span class="sla-pct">${Math.round(s.resolutionPercent)}%</span></div></td>
+              <td style="font-family:var(--mono);font-size:11px;color:${xc}">${s.timeRemainingResolution}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── SERVICE PORTAL ───────────────────────────────────────────────────────────
+function submitIncident() {
+  const caller = document.getElementById('f-caller').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  const impact = document.getElementById('f-impact').value;
+  const urgency = document.getElementById('f-urgency').value;
+  const fullDesc = document.getElementById('f-fullDesc').value.trim();
+
+  if (!caller || !desc || !impact || !urgency) {
+    showToast('Please fill in all required fields.', 'error'); return;
+  }
+
+  const newInc = { caller_id: caller, short_description: desc, description: fullDesc, impact, urgency };
+  const log = [];
+
+  // Run Business Rules
+  log.push('<span style="color:var(--accent2)">// BR: validateMandatory — Before Insert</span>');
+  log.push('<span style="color:var(--success)">✓ Mandatory fields validated</span>');
+
+  BusinessRules.autoCategorize(newInc);
+  log.push(`<span style="color:var(--accent2)">// BR: autoCategorize — Before Insert</span>`);
+  log.push(`<span style="color:var(--text)">category = <span style="color:#f59e0b">"${newInc.category}"</span> (${newInc._categorization_source})</span>`);
+
+  BusinessRules.setPriority(newInc);
+  log.push(`<span style="color:var(--accent2)">// BR: setPriority — Before Insert</span>`);
+  log.push(`<span style="color:var(--text)">priority = <span style="color:#f59e0b">${newInc.priority}</span> (${newInc.priority_label})</span>`);
+
+  BusinessRules.routeToGroup(newInc);
+  log.push(`<span style="color:var(--accent2)">// BR: routeToGroup — After Insert</span>`);
+  log.push(`<span style="color:var(--text)">assignment_group = <span style="color:#f59e0b">"${newInc.assignment_group}"</span></span>`);
+
+  newInc.number = `INC${String(Date.now()).slice(-7)}`;
+  newInc.sys_id = newInc.number;
+  newInc.state = 'new';
+  newInc.sys_created_on = new Date().toISOString();
+  newInc.responded_at = null;
+  newInc.resolved_at = null;
+
+  slaEngine.startSLAClock(newInc);
+  log.push(`<span style="color:var(--accent2)">// SLA Engine: startSLAClock</span>`);
+  log.push(`<span style="color:var(--text)">number = <span style="color:var(--accent)">"${newInc.number}"</span></span>`);
+  log.push(`<span style="color:var(--success)">✓ Incident created successfully</span>`);
+
+  INCIDENTS_DATA.unshift(newInc);
+  document.getElementById('sb-inc-count').textContent = INCIDENTS_DATA.filter(i => i.state !== 'resolved').length;
+
+  document.getElementById('glide-preview').innerHTML = log.join('<br/>');
+  showToast(`✓ ${newInc.number} created — Routed to ${newInc.assignment_group}`);
+  clearForm();
+}
+
+function clearForm() {
+  ['f-caller','f-desc','f-fullDesc'].forEach(id => document.getElementById(id).value = '');
+  ['f-impact','f-urgency'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function showIncidentDetail(sysId) {
+  const inc = INCIDENTS_DATA.find(i => i.sys_id === sysId);
+  if (!inc) return;
+  const s = slaEngine.getSLAStatus(inc);
+  const rc = s.responsePercent >= 100 ? '#ef4444' : s.responsePercent >= 80 ? '#f97316' : '#10b981';
+
+  document.getElementById('modal-title').textContent = `${inc.number} — Incident Detail`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row">
+      <span class="detail-key">Short Description</span><span class="detail-val">${inc.short_description}</span>
+      <span class="detail-key">State</span><span class="detail-val"><span class="state state-${inc.state}">${inc.state.replace('_',' ')}</span></span>
+      <span class="detail-key">Priority</span><span class="detail-val"><span class="pri pri-${inc.priority}">${inc.priority_label||'P'+inc.priority}</span></span>
+      <span class="detail-key">Category</span><span class="detail-val">${inc.category}</span>
+      <span class="detail-key">Caller</span><span class="detail-val">${inc.caller_id}</span>
+      <span class="detail-key">Assignment Group</span><span class="detail-val">${inc.assignment_group}</span>
+      <span class="detail-key">Assigned To</span><span class="detail-val">${inc.assigned_to || '—'}</span>
+      <span class="detail-key">Created</span><span class="detail-val">${new Date(inc.sys_created_on).toLocaleString()}</span>
+      <span class="detail-key">Responded At</span><span class="detail-val">${inc.responded_at ? new Date(inc.responded_at).toLocaleString() : 'Not yet'}</span>
+      <span class="detail-key">Resolved At</span><span class="detail-val">${inc.resolved_at ? new Date(inc.resolved_at).toLocaleString() : 'Not yet'}</span>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">SLA STATUS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Response SLA</div>
+          <div class="sla-bar-wrap"><div class="sla-bar"><div class="sla-fill" style="width:${s.responsePercent}%;background:${rc}"></div></div><span class="sla-pct">${Math.round(s.responsePercent)}%</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${s.responseStatus}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Resolution — ${s.timeRemainingResolution}</div>
+          <div class="sla-bar-wrap"><div class="sla-bar"><div class="sla-fill" style="width:${s.resolutionPercent}%;background:${rc}"></div></div><span class="sla-pct">${Math.round(s.resolutionPercent)}%</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${s.resolutionStatus}</div>
+        </div>
+      </div>
+    </div>
+    ${inc.work_notes ? `<div style="margin-top:14px"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">WORK NOTES</div><div class="work-notes">${inc.work_notes}</div></div>` : ''}
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function showChangeDetail(sysId) {
+  const chg = CHANGES_DATA.find(c => c.sys_id === sysId);
+  if (!chg) return;
+  const risk = cmdbEngine.calculateChangeRisk(chg.cmdb_ci);
+  const rColor = chg.risk === 'high' ? 'var(--danger)' : chg.risk === 'medium' ? 'var(--warning)' : 'var(--success)';
+
+  document.getElementById('modal-title').textContent = `${chg.number} — Change Detail`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row">
+      <span class="detail-key">Description</span><span class="detail-val">${chg.short_description}</span>
+      <span class="detail-key">Type</span><span class="detail-val">${chg.type}</span>
+      <span class="detail-key">State</span><span class="detail-val"><span class="state state-${chg.state}">${chg.state.replace('_',' ')}</span></span>
+      <span class="detail-key">Risk Level</span><span class="detail-val" style="color:${rColor}">${chg.risk.toUpperCase()} (${chg.risk_score}/100)</span>
+      <span class="detail-key">CMDB CI</span><span class="detail-val">${risk.ciName || chg.cmdb_ci}</span>
+      <span class="detail-key">CMDB Risk</span><span class="detail-val" style="color:${rColor}">${risk.recommendation}</span>
+      <span class="detail-key">Planned Start</span><span class="detail-val">${new Date(chg.planned_start).toLocaleString()}</span>
+      <span class="detail-key">Approval</span><span class="detail-val">${chg.approval_status}</span>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">IMPLEMENTATION PLAN</div>
+      <div class="work-notes">${chg.implementation_plan}</div>
+    </div>
+    <div style="margin-top:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">BACKOUT PLAN</div>
+      <div class="work-notes">${chg.backout_plan}</div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type === 'error' ? 'error show' : 'show';
+  setTimeout(() => t.className = '', 3500);
+}
+
+// ─── INIT RENDER ──────────────────────────────────────────────────────────────
+renderDashboard();
+</script>
+</body>
+</html>
