@@ -5,6 +5,15 @@ A pixel-inspired, single-page clone of the Netflix landing page — built from s
 ![HTML](https://img.shields.io/badge/HTML5-100%25-E34F26?logo=html5&logoColor=white)
 ![No Framework](https://img.shields.io/badge/Framework-None-lightgrey)
 
+## 📖 Overview
+
+This project recreates the look and feel of Netflix's public marketing/landing page — the page you see before signing in. It was built as a front-end practice project to demonstrate:
+
+- Structuring a real-world marketing page (hero, features, FAQ, signup, footer) with semantic HTML
+- Writing custom CSS layouts and styling without relying on a CSS framework
+- Handling basic interactivity (like FAQ expand/collapse) with vanilla JavaScript
+- Producing a responsive, visually polished UI matching an existing production design
+
 ## 📸 Preview
 
 <p align="center">
@@ -21,17 +30,28 @@ A pixel-inspired, single-page clone of the Netflix landing page — built from s
 
 ## ✨ Features
 
-- **Hero section** with cinematic background imagery and a clear call-to-action
-- **Email signup form** to start a free trial
-- **Feature highlights** section showcasing key product benefits
-- **FAQ section** with expandable questions
-- **Footer** with language selector and support links
+- **Hero section** — cinematic background imagery with a clear call-to-action
+- **Email signup form** — start a free trial with an email field
+- **Feature highlights** — grid section showcasing key product benefits
+- **FAQ section** — expandable question/answer list
+- **Footer** — language selector, support links, and legal footnotes
 
 ## 🛠️ Tech Stack
 
-- HTML5
-- CSS3 (inline, self-contained — no external stylesheets)
-- Vanilla JavaScript
+| Layer | Technology |
+|---|---|
+| Structure | HTML5 |
+| Styling | CSS3 (inline, self-contained — no external stylesheets) |
+| Interactivity | Vanilla JavaScript |
+| Dependencies | None |
+
+## 📁 Project Structure
+
+```
+NetFlix-Replica/
+├── index.html      # Full page: markup, styles, and script in one file
+└── README.md
+```
 
 ## 🚀 Getting Started
 
